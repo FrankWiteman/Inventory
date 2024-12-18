@@ -24,21 +24,14 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_data():
-    global inventory, sold_cars, users
-    if os.path.exists(INVENTORY_FILE):
-        inventory = pd.read_excel(INVENTORY_FILE).to_dict('records')
-    if os.path.exists(SOLD_CARS_FILE):
-        sold_cars = pd.read_excel(SOLD_CARS_FILE).to_dict('records')
+    global users
     if os.path.exists(USERS_FILE):
         user_data = pd.read_excel(USERS_FILE).to_dict('records')
         users = {user["Username"]: user["Password"] for user in user_data}
 
 def save_data():
-    pd.DataFrame(inventory).to_excel(INVENTORY_FILE, index=False)
-    pd.DataFrame(sold_cars).to_excel(SOLD_CARS_FILE, index=False)
     user_data = [{"Username": username, "Password": password} for username, password in users.items()]
     pd.DataFrame(user_data).to_excel(USERS_FILE, index=False)
-
 def register_user():
     print("Register a new user")
     while True:
@@ -51,7 +44,7 @@ def register_user():
             if password == confirm_password:
                 users[username] = hash_password(password)
                 save_data()
-                print("User registered successfully!\n")
+                print("User  registered successfully!\n")
                 break
             else:
                 print("Passwords do not match. Please try again.")
@@ -239,3 +232,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    load_data()
+    user_login()
