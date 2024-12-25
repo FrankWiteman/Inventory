@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-
 import pandas as pd
 import os
 import hashlib
 import getpass
 import sys
+from fpdf import FPDF
 
 # Constants
 SALES_TAX = 0.075
@@ -24,14 +24,21 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_data():
-    global users
+    global inventory, sold_cars, users
+    if os.path.exists(INVENTORY_FILE):
+        inventory = pd.read_excel(INVENTORY_FILE).to_dict('records')
+    if os.path.exists(SOLD_CARS_FILE):
+        sold_cars = pd.read_excel(SOLD_CARS_FILE).to_dict('records')
     if os.path.exists(USERS_FILE):
         user_data = pd.read_excel(USERS_FILE).to_dict('records')
         users = {user["Username"]: user["Password"] for user in user_data}
 
 def save_data():
+    pd.DataFrame(inventory).to_excel(INVENTORY_FILE, index=False)
+    pd.DataFrame(sold_cars).to_excel(SOLD_CARS_FILE, index=False)
     user_data = [{"Username": username, "Password": password} for username, password in users.items()]
     pd.DataFrame(user_data).to_excel(USERS_FILE, index=False)
+
 def register_user():
     print("Register a new user")
     while True:
@@ -52,7 +59,7 @@ def register_user():
 def user_login():
     print("Welcome! Please log in or register to access the program.")
     while True:
-        option = input("Do you want to (1) Log in or (2) Register or (3) Quit? Enter 1 or 2 or 3: ")
+        option = input("Do you want to (1) Log in or (2) Register or (3) Quit? Enter 1, 2, or 3: ")
         if option == "1":
             username = input("Enter username: ")
             password = getpass.getpass("Enter password: ")
@@ -70,7 +77,7 @@ def user_login():
             sys.exit()  # Exits the function immediately
         else:
             print("Invalid option. Please enter 1, 2, or 3.")
-            
+
 def add_inventory():
     while True:
         name = input("Enter vehicle name: ")
@@ -155,9 +162,26 @@ def import_inventory():
         if go_back.lower() == "back":
             break
 
+def export_to_csv(data, filename):
+    pd.DataFrame(data).to_csv(filename, index=False)
+    print(f"Data exported to {filename}")
+
+def export_to_pdf(data, filename):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    for row in data:
+        line = ", ".join([f"{k}: {v}" for k, v in row.items()])
+        pdf.cell(0, 10, line, ln=True)
+
+    pdf.output(filename)
+    print(f"Data exported to {filename}")
+
 def print_reports():
     while True:
-        option = input("Print by (1) VIN or (2) Total Sales: ")
+        option = input("Print by (1) VIN, (2) Total Sales, or (3) Export Data: ")
 
         if option == "1":
             vin = input("Enter VIN (full or last 6 digits): ")
@@ -174,6 +198,18 @@ def print_reports():
             print(f"Total Sales: ${total_sales:.2f}")
             print(f"Total Tax: ${total_tax:.2f}")
             print(f"Total Profit: ${total_profit:.2f}")
+        elif option == "3":
+            data_option = input("Export (1) Inventory, (2) Sold Cars, or (3) Reports: ")
+
+            if data_option == "1":
+                filename = input("Enter filename (e.g., inventory.csv): ")
+                export_to_csv(inventory, filename)
+            elif data_option == "2":
+                filename = input("Enter filename (e.g., sold_cars.csv): ")
+                export_to_csv(sold_cars, filename)
+            elif data_option == "3":
+                filename = input("Enter filename (e.g., report.pdf): ")
+                export_to_pdf(sold_cars, filename)
 
         go_back = input("Would you like to print another report or go back? (print/back): ")
         if go_back.lower() == "back":
@@ -232,5 +268,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    load_data()
-    user_login()
