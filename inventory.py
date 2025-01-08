@@ -1,3 +1,4 @@
+
 import os
 import time
 import pandas as pd
@@ -10,6 +11,7 @@ SALES_TAX = 0.075
 INVENTORY_FILE = "inventory.xlsx"
 SOLD_CARS_FILE = "sold_cars.xlsx"
 USERS_FILE = "users.xlsx"
+EXPENDITURES_FILE = "expenditures.xlsx"  # New file for expenditures
 
 # Initialize data
 inventory = []  # List of cars in inventory
@@ -32,7 +34,7 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_data():
-    global inventory, sold_cars, users
+    global inventory, sold_cars, users, expenditures
     if os.path.exists(INVENTORY_FILE):
         inventory = pd.read_excel(INVENTORY_FILE).to_dict('records')
     if os.path.exists(SOLD_CARS_FILE):
@@ -40,12 +42,15 @@ def load_data():
     if os.path.exists(USERS_FILE):
         user_data = pd.read_excel(USERS_FILE).to_dict('records')
         users = {user["Username"]: user["Password"] for user in user_data}
+    if os.path.exists(EXPENDITURES_FILE):
+        expenditures = pd.read_excel(EXPENDITURES_FILE).to_dict('records')
 
 def save_data():
     pd.DataFrame(inventory).to_excel(INVENTORY_FILE, index=False)
     pd.DataFrame(sold_cars).to_excel(SOLD_CARS_FILE, index=False)
     user_data = [{"Username": username, "Password": password} for username, password in users.items()]
     pd.DataFrame(user_data).to_excel(USERS_FILE, index=False)
+    pd.DataFrame(expenditures).to_excel(EXPENDITURES_FILE, index=False)  # Save expenditures
 
 def register_user():
     while True:
@@ -92,12 +97,12 @@ def user_login():
             show_transition("Navigating to Registration...")
             register_user()
         else:
-            print("Invalid option. Please enter 1 or 2.")
+            print(" Invalid option. Please enter 1 or 2.")
 
-def go_back(previous_function):
+def go_back(previous_function, *args):
     """Handle backward navigation with transition."""
     show_transition("Returning to previous menu...")
-    previous_function()
+    previous_function(*args)  # Pass any additional arguments
 
 def add_inventory():
     while True:
@@ -110,16 +115,16 @@ def add_inventory():
         if choice == "1":
             stock_number = input("Enter the stock number: ")
             name = input("Enter vehicle name: ")
-            vehicle_model = input("Enter the vehicle model:")
+            vehicle_model = input("Enter the vehicle model: ")
             vehicle_type = input("Enter vehicle type: ")
             vin = input("Enter VIN (full or last 6 digits): ")
-            vehicle_year = input("Enter the vehicle year:")
-            mileage = input("Enter the Odometer Mileage:")
+            vehicle_year = input("Enter the vehicle year: ")
+            mileage = input("Enter the Odometer Mileage: ")
             faults = input("Does the vehicle have faults? (Yes/No): ")
 
-            issues = ""
+            issues = []
             if faults.lower() == "yes":
-                issues = input("Enter the issues with the vehicle: ")
+                issues = input("Enter the issues with the vehicle (comma-separated): ").split(',')
 
             price = float(input("Enter the price of the vehicle: "))
 
@@ -139,7 +144,7 @@ def add_inventory():
             print("Vehicle added successfully!")
             time.sleep(1)
         elif choice == "2":
-            go_back(main_menu)
+            go_back(main_menu, "User   ")  # Pass the username to go back
         else:
             print("Invalid choice. Try again.")
             time.sleep(1)
@@ -189,8 +194,8 @@ def update_inventory():
                 car["Mileage"] = new_mileage
                 print("Mileage updated successfully!")
             elif choice == "6":
-                new_faults = input("Enter new faults (if any): ")
-                car["Faults"] = new_faults
+                new_faults = input("Enter new faults (if any, comma-separated): ")
+                car["Faults"] = new_faults.split(',') if new_faults else []
                 print("Faults updated successfully!")
             elif choice == "7":
                 while True:
@@ -218,7 +223,7 @@ def update_inventory():
                 print("Invalid choice. Please try again.")
 
             # Ask if the user wants to edit the vehicle again
-            edit_again = input("Do you want to edit vehicle (y/n)? ")
+            edit_again = input("Do you want to edit this vehicle again? (y/n): ")
             if edit_again.lower() != 'y':
                 break
         else:
@@ -263,7 +268,7 @@ def add_expenditure():
         elif choice == "3":
             print_expenditure_report()  # Call the report function
         elif choice == "4":
-            go_back(main_menu)
+            go_back(main_menu, "User    ")  # Pass the username to go back
         else:
             print("Invalid choice. Try again.")
             time.sleep(1)
@@ -271,32 +276,21 @@ def add_expenditure():
 def print_expenditure_report():
     clear_console()
     print("Expenditure Report")
-    print("1. Report by Car")
-    print("2. Report by Miscellaneous")
-    print("3. Go Back")
+    print("1. View All Expenditures")
+    print("2. Go Back")
 
     choice = input("Select an option: ")
     if choice == "1":
-        vin = input("Enter the VIN (full or last 6 digits) of the vehicle: ")
-        car_expenditures = [exp for exp in expenditures if exp["Type"] == "Car" and (vin in exp["VIN"][-6:] or vin == exp["VIN"])]
-        
-        if car_expenditures:
-            print(f"Expenditures for vehicle with VIN {vin}:")
-            for exp in car_expenditures:
-                print(f"- Amount: ${exp['Amount']:.2f}, Description: {exp['Description']}")
+        if expenditures:
+            for exp in expenditures:
+                print(f"Type: {exp['Type']}, VIN: {exp['VIN']}, Amount: ${exp['Amount']:.2f}, Description: {exp['Description']}")
+            save_choice = input("\nSave this report as a PDF? (y/n): ").lower()
+            if save_choice == "y":
+                save_report_to_pdf("Expenditure Report", [f"Type: {exp['Type']}, VIN: {exp['VIN']}, Amount: ${exp['Amount']:.2f}, Description: {exp['Description']}" for exp in expenditures], "expenditure_report.pdf")
         else:
-            print("No expenditures found for this vehicle.")
+            print("No expenditures found.")
     elif choice == "2":
-        misc_expenditures = [exp for exp in expenditures if exp["Type"] == "Miscellaneous"]
-        
-        if misc_expenditures:
-            print("Miscellaneous Expenditures:")
-            for exp in misc_expenditures:
-                print(f"- Amount: ${exp['Amount']:.2f}, Description: {exp['Description']}")
-        else:
-            print("No miscellaneous expenditures found.")
-    elif choice == "3":
-        go_back(add_expenditure)  # Go back to the add expenditure menu
+        go_back(add_expenditure, "User    ")  # Go back to the add expenditure menu
     else:
         print("Invalid choice. Please try again.")
         time.sleep(1)
@@ -332,7 +326,7 @@ def sell_car():
                 print("Car not found or already sold.")
                 time.sleep(1)
         elif choice == "2":
-            go_back(main_menu)
+            go_back(main_menu, "User    ")  # Pass the username to go back
         else:
             print("Invalid choice. Try again.")
             time.sleep(1)
@@ -372,6 +366,7 @@ def print_reports():
                     print("No vehicles found in inventory.")
                 else:
                     report_content = []
+                    total_value = 0.0
                     for idx, car in enumerate(inventory_data, start=1):
                         report_content.append(
                             f"{idx}.\n"
@@ -381,11 +376,13 @@ def print_reports():
                             f"Year: {car.get('Year', 'N/A')}\n"
                             f"VIN: {car.get('VIN', 'N/A')}\n"
                             f"Mileage: {car.get('Mileage', 'N/A')}\n"
-                            f"Faults: {car.get('Faults', 'N/A')}\n"
-                            f"Price: {car.get('Price', 0.0):.2f}\n"
+                            f"Faults: {', '.join(car.get('Faults', []))}\n"
+                            f"Price: ${car.get('Price', 0.0):.2f}\n"
                             f"Sold: {car.get('Sold', False)}\n"
                         )
+                        total_value += car.get('Price', 0.0)
                     print("\n".join(report_content))
+                    print(f"Total Inventory Value: ${total_value:.2f}")
                     save_choice = input("\nSave this report as a PDF? (y/n): ").lower()
                     if save_choice == "y":
                         save_report_to_pdf("Inventory Report", report_content, "inventory_report.pdf")
@@ -404,8 +401,8 @@ def print_reports():
                     f"Year: {car.get('Year', 'N/A')}\n",
                     f"VIN: {car.get('VIN', 'N/A')}\n",
                     f"Mileage: {car.get('Mileage', 'N/A')}\n",
-                    f"Faults: {car.get('Faults', 'N/A')}\n",
-                    f"Price: {car.get('Price', 0.0):.2f}\n",
+                    f"Faults: {', '.join(car.get('Faults', []))}\n",
+                    f"Price: ${car.get('Price', 0.0):.2f}\n",
                     f"Sold: {car.get('Sold', False)}"
                 ]
                 print("".join(report_content))
@@ -432,7 +429,7 @@ def print_reports():
                 save_report_to_pdf("Sales Summary Report", report_content, "sales_summary_report.pdf")
             input("\nPress Enter to return to the reports menu.")
         elif choice == "4":
-            go_back(main_menu)
+            go_back(main_menu, "User     ")  # Pass the username to go back
         else:
             print("Invalid choice. Please try again.")
             time.sleep(1)
@@ -465,14 +462,14 @@ def view_inventory(show_all=False):
                     f"   Year: {car.get('Year', 'N/A')}\n"
                     f"   VIN: {car.get('VIN', 'N/A')}\n"
                     f"   Mileage: {car.get('Mileage', 'N/A')}\n"
-                    f"   Faults: {car.get('Faults', 'N/A')}\n"
-                    f"   Price: {car.get('Price', 0.0):.2f}\n"
+                    f"   Faults: {', '.join(car.get('Faults', []))}\n"
+                    f"   Price: ${car.get('Price', 0.0):.2f}\n"
                     f"   Sold: {car.get('Sold', False)}\n"
                 )
 
         if input("Go back? (y/n): ").lower() == 'y':
             break
-        
+
 def save_report_to_pdf(report_title, report_content, filename="report.pdf"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -536,4 +533,4 @@ def main_menu(username):
 if __name__ == "__main__":
     load_data()
     user_login()
-    main_menu("User ")  # Enter the main menu with a default username
+    main_menu("User  ")  # Enter the main menu with a default username
