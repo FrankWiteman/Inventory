@@ -535,4 +535,3 @@ if __name__ == "__main__":
     load_data()
     user_login()
     main_menu("User  ")  # Enter the main menu with a default username
-#hfls
