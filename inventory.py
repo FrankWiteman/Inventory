@@ -5,6 +5,7 @@ import pandas as pd
 import hashlib
 import getpass
 from fpdf import FPDF
+import Keyboard
 
 # Constants
 SALES_TAX = 0.075
@@ -474,9 +475,9 @@ def save_report_to_pdf(report_title, report_content, filename="report.pdf"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Times New Roman", size=12)
     
-    pdf.set_font("Arial", style="B", size=16)
+    pdf.set_font("Times New Roman", style="B", size=16)
     pdf.cell(0, 10, report_title, ln=True, align="C")
     pdf.ln(10)  # Add a line break
 
